@@ -351,7 +351,25 @@ if addon.Util.IsMainline then -- Illusion
 
 	function filters.IsIllusion(itemId)
 		local classId, subclassId = select(6, C_Item.GetItemInfoInstant(itemId))
-		return classId == Enum.ItemClass.Consumable and subclassId == Enum.ItemConsumableSubclass.Other
+		if classId ~= Enum.ItemClass.Consumable or subclassId ~= Enum.ItemConsumableSubclass.Other then
+			return false
+		end
+
+		local tooltipInfo = C_TooltipInfo.GetItemByID(itemId)
+		if not tooltipInfo or not tooltipInfo.lines then
+			return false
+		end
+
+		for _, line in next, tooltipInfo.lines do
+			if line.leftText then
+				local text = line.leftText:lower()
+				if text:find('illusion') or text:find('weapon enchant') or text:find('adds a visual effect') then
+					return true
+				end
+			end
+		end
+
+		return false
 	end
 
 	function filters.IsIllusionCollected(itemId)
