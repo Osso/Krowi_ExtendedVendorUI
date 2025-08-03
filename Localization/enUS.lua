@@ -9,7 +9,11 @@ KrowiEVU.PluginsApi:LoadPluginLocalization(L)
 L["Are you sure you want to hide the options button?"] = [=[Are you sure you want to hide the options button?
 The options button can be shown again via {gameMenu} {arrow} {interface} {arrow} {addOns} {arrow} {addonName} {arrow} {general} {arrow} {options}]=]
 L["Arsenals"] = true
+L["Author"] = true
 L["Both"] = true
+L["Build"] = true
+L["Checked"] = true
+L["Collectibles"] = true
 L["Columns"] = true
 L["Columns first"] = true
 L["Custom"] = true

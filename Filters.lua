@@ -11,6 +11,7 @@ _G[addon.Metadata.Prefix .. '_LE_LOOT_FILTER_RECIPES'] = 105
 _G[addon.Metadata.Prefix .. '_LE_LOOT_FILTER_TRANSMOG_SETS'] = 106
 _G[addon.Metadata.Prefix .. '_LE_LOOT_FILTER_ILLUSIONS'] = 107
 _G[addon.Metadata.Prefix .. '_LE_LOOT_FILTER_HOUSING'] = 108
+_G[addon.Metadata.Prefix .. '_LE_LOOT_FILTER_COLLECTIBLES'] = 109
 _G[addon.Metadata.Prefix .. '_LE_LOOT_FILTER_CUSTOM'] = 200
 _G[addon.Metadata.Prefix .. '_LE_LOOT_FILTER_SEARCH'] = 201
 
@@ -141,6 +142,8 @@ function filters:Validate(lootFilter, itemId)
 		return self:ValidateIllusionOnly(itemId)
     elseif lootFilter == _G[addon.Metadata.Prefix .. '_LE_LOOT_FILTER_RECIPES'] then
 		return self:ValidateRecipesOnly(itemId)
+    elseif lootFilter == _G[addon.Metadata.Prefix .. '_LE_LOOT_FILTER_COLLECTIBLES'] then
+		return self:ValidateCollectiblesOnly(itemId)
     elseif lootFilter == _G[addon.Metadata.Prefix .. '_LE_LOOT_FILTER_HOUSING'] then
 		return self:ValidateHousingOnly(itemId)
     elseif lootFilter == _G[addon.Metadata.Prefix .. '_LE_LOOT_FILTER_CUSTOM'] then
@@ -436,6 +439,63 @@ else
 	function filters.IsHousingCollected(itemId)
 		return false
 	end
+end
+
+function filters:ValidateCollectiblesOnly(itemId)
+	-- Show only collectible items: pets, mounts, toys, transmog, transmog sets, illusions, and recipes
+	-- Also respect the "Hide Collected" settings for each type
+
+	if self.IsPet(itemId) then
+		if addon.Filters.db.profile.HideCollected.Pets then
+			return not self.IsPetCollected(itemId);
+		end
+		return true;
+	end
+
+	if self.IsMount(itemId) then
+		if addon.Filters.db.profile.HideCollected.Mounts then
+			return not self.IsMountCollected(itemId);
+		end
+		return true;
+	end
+
+	if self.IsToy(itemId) then
+		if addon.Filters.db.profile.HideCollected.Toys then
+			return not self.IsToyCollected(itemId);
+		end
+		return true;
+	end
+
+	if self.IsTransmog(itemId) then
+		if addon.Filters.db.profile.HideCollected.Transmog then
+			return not self.IsTransmogCollectedByMode(itemId);
+		end
+		return true;
+	end
+
+	if self.IsTransmogSet(itemId) then
+		if addon.Filters.db.profile.HideCollected.TransmogSets then
+			return not self.IsTransmogSetCollected(itemId);
+		end
+		return true;
+	end
+
+	if self.IsIllusion(itemId) then
+		if addon.Filters.db.profile.HideCollected.Illusions then
+			return not self.IsIllusionCollected(itemId);
+		end
+		return true;
+	end
+
+	if self.IsRecipe(itemId) then
+		if addon.Filters.db.profile.HideCollected.Recipes then
+			return not self.IsRecipeCollected(itemId);
+		end
+		return true;
+	end
+
+	-- Not a collectible item
+	return false;
 end
 
 do -- Custom

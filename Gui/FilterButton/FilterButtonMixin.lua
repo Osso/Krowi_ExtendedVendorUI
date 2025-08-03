@@ -20,6 +20,7 @@ local function InitializeLootFilterTextMap()
 	lootFilterTextMap[_G[addon.Metadata.Prefix .. '_LE_LOOT_FILTER_ILLUSIONS']] = addon.L['Illusions']
 	lootFilterTextMap[_G[addon.Metadata.Prefix .. '_LE_LOOT_FILTER_RECIPES']] = addon.L['Recipes']
 	lootFilterTextMap[_G[addon.Metadata.Prefix .. '_LE_LOOT_FILTER_HOUSING']] = addon.L['Housing']
+	lootFilterTextMap[_G[addon.Metadata.Prefix .. '_LE_LOOT_FILTER_COLLECTIBLES']] = addon.L['Collectibles']
 	lootFilterTextMap[_G[addon.Metadata.Prefix .. '_LE_LOOT_FILTER_CUSTOM']] = addon.L['Custom']
 end
 
@@ -157,6 +158,7 @@ function KrowiEVU_FilterButtonMixin:CreateMenu(menu)
 		self:CreateRadio(menu, addon.L['Bind on Equip'], LE_LOOT_FILTER_BOE)
 	end
 
+	self:CreateRadio(menu, addon.L['Collectibles'], _G[addon.Metadata.Prefix .. '_LE_LOOT_FILTER_COLLECTIBLES'])
 	self:CreateRadio(menu, addon.L['All'], LE_LOOT_FILTER_ALL)
 
 	mb:CreateDivider(menu)
