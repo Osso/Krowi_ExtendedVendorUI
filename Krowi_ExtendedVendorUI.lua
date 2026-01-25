@@ -6,6 +6,8 @@ local version = (GetBuildInfo())
 local major = string.match(version, '(%d+)%.(%d+)%.(%d+)(%w?)')
 addon.IsWrathClassic = major == '3'
 addon.IsDragonflightRetail = major == '10'
+addon.IsTheWarWithinRetail = major == '11'
+addon.IsMidnightRetail = major == '12'
 
 -- [[ Load addon ]] --
 local loadHelper = CreateFrame('Frame')
