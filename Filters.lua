@@ -73,6 +73,9 @@ local defaults = {
 			Recipes = false,
 			Housing = false,
 		},
+		TransmogFilterMode = {
+			UseAppearanceInsteadOfSource = false,
+		},
 		Custom = {
 			Pets = true,
 			Mounts = true,
@@ -290,12 +293,52 @@ do -- Transmog
 	end
 
 	function filters.IsTransmog(itemId)
-		itemId = C_TransmogCollection.GetItemInfo(itemId)
-		return itemId ~= nil
+		local appearanceId = C_TransmogCollection.GetItemInfo(itemId)
+		return appearanceId ~= nil
 	end
 
 	function filters.IsTransmogCollected(itemId)
-		return C_TransmogCollection.PlayerHasTransmog(itemId)
+		return filters.IsTransmogCollectedByMode(itemId)
+	end
+
+	function filters.IsTransmogSourceCollected(itemId)
+		-- As of 12.0.0, GetAppearanceSourceInfo returns a table instead of multiple values
+		local appearanceId, sourceId = C_TransmogCollection.GetItemInfo(itemId)
+
+		if not appearanceId then
+			return true
+		end
+
+		local sourceInfo = C_TransmogCollection.GetAppearanceSourceInfo(sourceId)
+		return sourceInfo and sourceInfo.isCollected
+	end
+
+	function filters.IsTransmogAppearanceCollected(itemId)
+		-- Check if the appearance is collected from any source
+		-- As of 12.0.0, GetAppearanceSourceInfo returns a table instead of multiple values
+		local appearanceId = C_TransmogCollection.GetItemInfo(itemId)
+
+		if not appearanceId then
+			return true
+		end
+
+		local itemSources = C_TransmogCollection.GetAllAppearanceSources(appearanceId)
+		for _, sourceId in pairs(itemSources or {}) do
+			local sourceInfo = C_TransmogCollection.GetAppearanceSourceInfo(sourceId)
+			if sourceInfo and sourceInfo.isCollected then
+				return true
+			end
+		end
+
+		return false
+	end
+
+	function filters.IsTransmogCollectedByMode(itemId)
+		if addon.Filters.db.profile.TransmogFilterMode.UseAppearanceInsteadOfSource then
+			return filters.IsTransmogAppearanceCollected(itemId)
+		end
+
+		return filters.IsTransmogSourceCollected(itemId)
 	end
 end
 
