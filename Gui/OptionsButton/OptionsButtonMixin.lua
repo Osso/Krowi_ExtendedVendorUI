@@ -36,6 +36,14 @@ function KrowiEVU_OptionsButtonMixin:OnLoad()
 	end
 end
 
+local function HideMerchantItemTooltip()
+	GameTooltip:Hide()
+	if GameTooltip_HideShoppingTooltips then
+		GameTooltip_HideShoppingTooltips(GameTooltip)
+	end
+	MerchantFrame.itemHover = nil
+end
+
 function KrowiEVU_OptionsButtonMixin:ShowHide()
     if addon.Options.db.profile.ShowOptionsButton then
         self:Show()
@@ -211,6 +219,7 @@ end
 if not addon.Util.IsMainline then
 	function KrowiEVU_OptionsButtonMixin:OnMouseDown()
 		PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
+		HideMerchantItemTooltip()
 		UIMenuButtonStretchMixin.OnMouseDown(self)
 		menuBuilder:ShowPopup()
 	end

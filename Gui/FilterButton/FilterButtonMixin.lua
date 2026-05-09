@@ -4,6 +4,14 @@ local isModern = addon.Util.IsMainline
 
 KrowiEVU_FilterButtonMixin = {}
 
+local function HideMerchantItemTooltip()
+	GameTooltip:Hide()
+	if GameTooltip_HideShoppingTooltips then
+		GameTooltip_HideShoppingTooltips(GameTooltip)
+	end
+	MerchantFrame.itemHover = nil
+end
+
 -- Lookup table for loot filter text labels
 local lootFilterTextMap = {}
 
@@ -69,6 +77,7 @@ function KrowiEVU_FilterButtonMixin:OnLoad()
 end
 
 function KrowiEVU_FilterButtonMixin:OnMouseDown()
+	HideMerchantItemTooltip()
 	if isModern then
 		WowStyle1DropdownMixin.OnMouseDown(self)
 	else
