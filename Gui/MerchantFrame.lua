@@ -210,7 +210,7 @@ GetMerchantNumItems = function()
 	local numMerchantItems = origGetMerchantNumItems()
 	for i = 1, numMerchantItems, 1 do
 		local itemId = origGetMerchantItemID(i)
-		if itemId == nil or addon.Filters:Validate(lootFilter, itemId) then
+		if itemId == nil or addon.Filters:Validate(lootFilter, itemId, i) then
 			tinsert(addon.CachedItemIndices, i)
 		end
 	end

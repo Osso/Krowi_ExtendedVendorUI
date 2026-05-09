@@ -110,7 +110,18 @@ local function StripColorCodes(text)
 	if not text then
 		return nil
 	end
-	return text:gsub('|c%x%x%x%x%x%x%x%x', ''):gsub('|r', '')
+	return text:gsub('|c%x%x%x%x%x%x%x%x', ''):gsub('|r', ''):gsub('^%s+', ''):gsub('%s+$', '')
+end
+
+local function GetTooltipInfo(itemId, merchantIndex)
+	if merchantIndex and C_TooltipInfo.GetMerchantItem then
+		local tooltipInfo = C_TooltipInfo.GetMerchantItem(merchantIndex)
+		if tooltipInfo and tooltipInfo.lines then
+			return tooltipInfo
+		end
+	end
+
+	return C_TooltipInfo.GetItemByID(itemId)
 end
 
 local function IsTooltipLineKnown(line)
@@ -150,7 +161,7 @@ function filters:Load()
     self.db.RegisterCallback(self, 'OnProfileReset', 'RefreshFilters')
 end
 
-function filters:Validate(lootFilter, itemId)
+function filters:Validate(lootFilter, itemId, merchantIndex)
 	if lootFilter == _G[addon.Metadata.Prefix .. '_LE_LOOT_FILTER_PETS'] then
 		return self:ValidatePetsOnly(itemId)
     elseif lootFilter == _G[addon.Metadata.Prefix .. '_LE_LOOT_FILTER_MOUNTS'] then
@@ -164,13 +175,13 @@ function filters:Validate(lootFilter, itemId)
 	elseif lootFilter == _G[addon.Metadata.Prefix .. '_LE_LOOT_FILTER_ILLUSIONS'] then
 		return self:ValidateIllusionOnly(itemId)
     elseif lootFilter == _G[addon.Metadata.Prefix .. '_LE_LOOT_FILTER_RECIPES'] then
-		return self:ValidateRecipesOnly(itemId)
+		return self:ValidateRecipesOnly(itemId, merchantIndex)
     elseif lootFilter == _G[addon.Metadata.Prefix .. '_LE_LOOT_FILTER_COLLECTIBLES'] then
-		return self:ValidateCollectiblesOnly(itemId)
+		return self:ValidateCollectiblesOnly(itemId, merchantIndex)
     elseif lootFilter == _G[addon.Metadata.Prefix .. '_LE_LOOT_FILTER_HOUSING'] then
 		return self:ValidateHousingOnly(itemId)
     elseif lootFilter == _G[addon.Metadata.Prefix .. '_LE_LOOT_FILTER_CUSTOM'] then
-		return self:ValidateCustom(itemId)
+		return self:ValidateCustom(itemId, merchantIndex)
     elseif lootFilter == _G[addon.Metadata.Prefix .. '_LE_LOOT_FILTER_SEARCH'] then
 		return self:ValidateSearch(itemId)
 	else
@@ -199,7 +210,7 @@ function filters:Validate(lootFilter, itemId)
 		end
 
 		if self.IsRecipe(itemId) and addon.Filters.db.profile.HideCollected.Recipes then
-			return not self.IsRecipeCollected(itemId)
+			return not self.IsRecipeCollected(itemId, merchantIndex)
 		end
 
 		if self.IsHousing(itemId) and addon.Filters.db.profile.HideCollected.Housing then
@@ -458,12 +469,12 @@ else
 end
 
 if addon.Util.IsMainline then -- Recipes
-	function filters:ValidateRecipesOnly(itemId)
+	function filters:ValidateRecipesOnly(itemId, merchantIndex)
 		if not self.IsRecipe(itemId) then
 			return false
 		end
 		if addon.Filters.db.profile.HideCollected.Recipes then
-			return not self.IsRecipeCollected(itemId)
+			return not self.IsRecipeCollected(itemId, merchantIndex)
 		end
 		return true
 	end
@@ -473,8 +484,8 @@ if addon.Util.IsMainline then -- Recipes
 		return classId == Enum.ItemClass.Recipe
 	end
 
-	function filters.IsRecipeCollected(itemId)
-		local tooltipInfo = C_TooltipInfo.GetItemByID(itemId)
+	function filters.IsRecipeCollected(itemId, merchantIndex)
+		local tooltipInfo = GetTooltipInfo(itemId, merchantIndex)
 		if not tooltipInfo or not tooltipInfo.lines then
 			return false
 		end
@@ -528,7 +539,7 @@ else
 	end
 end
 
-function filters:ValidateCollectiblesOnly(itemId)
+function filters:ValidateCollectiblesOnly(itemId, merchantIndex)
 	-- Show only collectible items: pets, mounts, toys, transmog, transmog sets, illusions, and recipes
 	-- Also respect the "Hide Collected" settings for each type
 
@@ -576,7 +587,7 @@ function filters:ValidateCollectiblesOnly(itemId)
 
 	if self.IsRecipe(itemId) then
 		if addon.Filters.db.profile.HideCollected.Recipes then
-			return not self.IsRecipeCollected(itemId);
+			return not self.IsRecipeCollected(itemId, merchantIndex);
 		end
 		return true;
 	end
@@ -586,7 +597,7 @@ function filters:ValidateCollectiblesOnly(itemId)
 end
 
 do -- Custom
-	function filters:ValidateCustom(itemId)
+	function filters:ValidateCustom(itemId, merchantIndex)
 		if self.IsPet(itemId) then
 			if addon.Filters.db.profile.Custom.Pets then
 				if addon.Filters.db.profile.HideCollected.Pets then
@@ -656,7 +667,7 @@ do -- Custom
 		if self.IsRecipe(itemId) then
 			if addon.Filters.db.profile.Custom.Recipes then
 				if addon.Filters.db.profile.HideCollected.Recipes then
-					return not self.IsRecipeCollected(itemId)
+					return not self.IsRecipeCollected(itemId, merchantIndex)
 				end
 				return true
 			end
