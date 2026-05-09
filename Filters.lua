@@ -106,6 +106,26 @@ for index, _ in next, filters.WeaponTypes do
 	defaults.profile.OnlyShow.Weapon[index] = true
 end
 
+local function StripColorCodes(text)
+	if not text then
+		return nil
+	end
+	return text:gsub('|c%x%x%x%x%x%x%x%x', ''):gsub('|r', '')
+end
+
+local function IsTooltipLineKnown(line)
+	if not line then
+		return false
+	end
+
+	if Enum.TooltipDataLineType.RestrictedSpellKnown and line.type == Enum.TooltipDataLineType.RestrictedSpellKnown then
+		return true
+	end
+
+	local leftText = StripColorCodes(line.leftText)
+	return (ITEM_SPELL_KNOWN and leftText == ITEM_SPELL_KNOWN) or leftText == 'Already known'
+end
+
 if not addon.Util.IsMainline then
 	local merchantFilter = LE_LOOT_FILTER_ALL
 	function GetMerchantFilter()
@@ -417,8 +437,11 @@ if addon.Util.IsMainline then -- Illusion
 
 	function filters.IsIllusionCollected(itemId)
 		local tooltipInfo = C_TooltipInfo.GetItemByID(itemId)
+		if not tooltipInfo or not tooltipInfo.lines then
+			return false
+		end
 		for _, line in next, tooltipInfo.lines do
-			if line.type == Enum.TooltipDataLineType.RestrictedSpellKnown then
+			if IsTooltipLineKnown(line) then
 				return true
 			end
 		end
@@ -452,8 +475,11 @@ if addon.Util.IsMainline then -- Recipes
 
 	function filters.IsRecipeCollected(itemId)
 		local tooltipInfo = C_TooltipInfo.GetItemByID(itemId)
+		if not tooltipInfo or not tooltipInfo.lines then
+			return false
+		end
 		for _, line in next, tooltipInfo.lines do
-			if line.type == Enum.TooltipDataLineType.RestrictedSpellKnown then
+			if IsTooltipLineKnown(line) then
 				return true
 			end
 		end
