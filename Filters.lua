@@ -137,6 +137,41 @@ local function IsTooltipLineKnown(line)
 	return (ITEM_SPELL_KNOWN and leftText == ITEM_SPELL_KNOWN) or leftText == 'Already known'
 end
 
+local RecipeTooltipTitlePrefixes = {
+	'Plans:',
+	'Recipe:',
+	'Pattern:',
+	'Formula:',
+	'Technique:',
+	'Schematic:',
+	'Design:',
+	'Manual:',
+	'Tome:',
+}
+
+local function TooltipLooksLikeRecipe(tooltipInfo)
+	if not tooltipInfo or not tooltipInfo.lines then
+		return false
+	end
+
+	for _, line in next, tooltipInfo.lines do
+		local leftText = StripColorCodes(line.leftText)
+		if leftText then
+			for _, prefix in next, RecipeTooltipTitlePrefixes do
+				if leftText:sub(1, #prefix) == prefix then
+					return true
+				end
+			end
+
+			if leftText:find('Teaches you how to craft', 1, true) then
+				return true
+			end
+		end
+	end
+
+	return false
+end
+
 if not addon.Util.IsMainline then
 	local merchantFilter = LE_LOOT_FILTER_ALL
 	function GetMerchantFilter()
@@ -209,7 +244,7 @@ function filters:Validate(lootFilter, itemId, merchantIndex)
 			return not self.IsIllusionCollected(itemId)
 		end
 
-		if self.IsRecipe(itemId) and addon.Filters.db.profile.HideCollected.Recipes then
+		if self.IsRecipe(itemId, merchantIndex) and addon.Filters.db.profile.HideCollected.Recipes then
 			return not self.IsRecipeCollected(itemId, merchantIndex)
 		end
 
@@ -470,7 +505,7 @@ end
 
 if addon.Util.IsMainline then -- Recipes
 	function filters:ValidateRecipesOnly(itemId, merchantIndex)
-		if not self.IsRecipe(itemId) then
+		if not self.IsRecipe(itemId, merchantIndex) then
 			return false
 		end
 		if addon.Filters.db.profile.HideCollected.Recipes then
@@ -479,9 +514,13 @@ if addon.Util.IsMainline then -- Recipes
 		return true
 	end
 
-	function filters.IsRecipe(itemId)
+	function filters.IsRecipe(itemId, merchantIndex)
 		local classId = select(6, C_Item.GetItemInfoInstant(itemId))
-		return classId == Enum.ItemClass.Recipe
+		if classId == Enum.ItemClass.Recipe then
+			return true
+		end
+
+		return TooltipLooksLikeRecipe(GetTooltipInfo(itemId, merchantIndex))
 	end
 
 	function filters.IsRecipeCollected(itemId, merchantIndex)
@@ -584,8 +623,7 @@ function filters:ValidateCollectiblesOnly(itemId, merchantIndex)
 		end
 		return true;
 	end
-
-	if self.IsRecipe(itemId) then
+	if self.IsRecipe(itemId, merchantIndex) then
 		if addon.Filters.db.profile.HideCollected.Recipes then
 			return not self.IsRecipeCollected(itemId, merchantIndex);
 		end
@@ -663,8 +701,7 @@ do -- Custom
 			end
 			return false
 		end
-
-		if self.IsRecipe(itemId) then
+		if self.IsRecipe(itemId, merchantIndex) then
 			if addon.Filters.db.profile.Custom.Recipes then
 				if addon.Filters.db.profile.HideCollected.Recipes then
 					return not self.IsRecipeCollected(itemId, merchantIndex)
