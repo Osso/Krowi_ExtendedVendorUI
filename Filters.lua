@@ -137,6 +137,20 @@ local function IsTooltipLineKnown(line)
 	return (ITEM_SPELL_KNOWN and leftText == ITEM_SPELL_KNOWN) or leftText == 'Already known'
 end
 
+local function TooltipHasKnownLine(tooltipInfo)
+	if not tooltipInfo or not tooltipInfo.lines then
+		return false
+	end
+
+	for _, line in next, tooltipInfo.lines do
+		if IsTooltipLineKnown(line) then
+			return true
+		end
+	end
+
+	return false
+end
+
 local RecipeTooltipTitlePrefixes = {
 	'Plans:',
 	'Recipe:',
@@ -149,6 +163,28 @@ local RecipeTooltipTitlePrefixes = {
 	'Tome:',
 }
 
+local function TooltipLineStartsWithRecipePrefix(leftText)
+	for _, prefix in next, RecipeTooltipTitlePrefixes do
+		if leftText:sub(1, #prefix) == prefix then
+			return true
+		end
+	end
+
+	return false
+end
+
+local function TooltipLineLooksLikeRecipe(leftText)
+	if not leftText then
+		return false
+	end
+
+	if TooltipLineStartsWithRecipePrefix(leftText) then
+		return true
+	end
+
+	return leftText:find('Teaches you how to craft', 1, true) ~= nil
+end
+
 local function TooltipLooksLikeRecipe(tooltipInfo)
 	if not tooltipInfo or not tooltipInfo.lines then
 		return false
@@ -156,16 +192,8 @@ local function TooltipLooksLikeRecipe(tooltipInfo)
 
 	for _, line in next, tooltipInfo.lines do
 		local leftText = StripColorCodes(line.leftText)
-		if leftText then
-			for _, prefix in next, RecipeTooltipTitlePrefixes do
-				if leftText:sub(1, #prefix) == prefix then
-					return true
-				end
-			end
-
-			if leftText:find('Teaches you how to craft', 1, true) then
-				return true
-			end
+		if TooltipLineLooksLikeRecipe(leftText) then
+			return true
 		end
 	end
 
@@ -483,15 +511,7 @@ if addon.Util.IsMainline then -- Illusion
 
 	function filters.IsIllusionCollected(itemId)
 		local tooltipInfo = C_TooltipInfo.GetItemByID(itemId)
-		if not tooltipInfo or not tooltipInfo.lines then
-			return false
-		end
-		for _, line in next, tooltipInfo.lines do
-			if IsTooltipLineKnown(line) then
-				return true
-			end
-		end
-		return false
+		return TooltipHasKnownLine(tooltipInfo)
 	end
 else
 	function filters.IsIllusion(itemId)
@@ -525,15 +545,7 @@ if addon.Util.IsMainline then -- Recipes
 
 	function filters.IsRecipeCollected(itemId, merchantIndex)
 		local tooltipInfo = GetTooltipInfo(itemId, merchantIndex)
-		if not tooltipInfo or not tooltipInfo.lines then
-			return false
-		end
-		for _, line in next, tooltipInfo.lines do
-			if IsTooltipLineKnown(line) then
-				return true
-			end
-		end
-		return false
+		return TooltipHasKnownLine(tooltipInfo)
 	end
 else
 	function filters.IsRecipe(itemId)
@@ -578,90 +590,108 @@ else
 	end
 end
 
+local function IsAnyCollectible(filterApi, itemId, merchantIndex)
+	return filterApi.IsPet(itemId)
+		or filterApi.IsMount(itemId)
+		or filterApi.IsToy(itemId)
+		or filterApi.IsTransmog(itemId)
+		or filterApi.IsTransmogSet(itemId)
+		or filterApi.IsIllusion(itemId)
+		or filterApi.IsRecipe(itemId, merchantIndex)
+		or filterApi.IsHousing(itemId)
+end
+
+local function HideCollectedAllowsItem(isCollected, hideCollected)
+	if hideCollected then
+		return not isCollected
+	end
+
+	return true
+end
+
+local function ValidateCustomTransmogSubtype(itemId)
+	local _, _, _, _, _, classId, subClassId = C_Item.GetItemInfoInstant(itemId)
+	if classId == Enum.ItemClass.Armor and addon.Filters.db.profile.Custom.Armor[subClassId] ~= nil then
+		return addon.Filters.db.profile.Custom.Armor[subClassId]
+	end
+
+	if classId == Enum.ItemClass.Weapon and addon.Filters.db.profile.Custom.Weapon[subClassId] ~= nil then
+		return addon.Filters.db.profile.Custom.Weapon[subClassId]
+	end
+
+	return true
+end
+
 function filters:ValidateCollectiblesOnly(itemId, merchantIndex)
-	-- Show only collectible items: pets, mounts, toys, transmog, transmog sets, illusions, and recipes
-	-- Also respect the "Hide Collected" settings for each type
+	if not IsAnyCollectible(self, itemId, merchantIndex) then
+		return false
+	end
 
 	if self.IsPet(itemId) then
-		if addon.Filters.db.profile.HideCollected.Pets then
-			return not self.IsPetCollected(itemId);
-		end
-		return true;
+		local isCollected = self.IsPetCollected(itemId)
+		return HideCollectedAllowsItem(isCollected, addon.Filters.db.profile.HideCollected.Pets)
 	end
 
 	if self.IsMount(itemId) then
-		if addon.Filters.db.profile.HideCollected.Mounts then
-			return not self.IsMountCollected(itemId);
-		end
-		return true;
+		local isCollected = self.IsMountCollected(itemId)
+		return HideCollectedAllowsItem(isCollected, addon.Filters.db.profile.HideCollected.Mounts)
 	end
 
 	if self.IsToy(itemId) then
-		if addon.Filters.db.profile.HideCollected.Toys then
-			return not self.IsToyCollected(itemId);
-		end
-		return true;
+		local isCollected = self.IsToyCollected(itemId)
+		return HideCollectedAllowsItem(isCollected, addon.Filters.db.profile.HideCollected.Toys)
 	end
 
 	if self.IsTransmog(itemId) then
-		if addon.Filters.db.profile.HideCollected.Transmog then
-			return not self.IsTransmogCollectedByMode(itemId);
-		end
-		return true;
+		local isCollected = self.IsTransmogCollectedByMode(itemId)
+		return HideCollectedAllowsItem(isCollected, addon.Filters.db.profile.HideCollected.Transmog)
 	end
 
 	if self.IsTransmogSet(itemId) then
-		if addon.Filters.db.profile.HideCollected.TransmogSets then
-			return not self.IsTransmogSetCollected(itemId);
-		end
-		return true;
+		local isCollected = self.IsTransmogSetCollected(itemId)
+		return HideCollectedAllowsItem(isCollected, addon.Filters.db.profile.HideCollected.TransmogSets)
 	end
 
 	if self.IsIllusion(itemId) then
-		if addon.Filters.db.profile.HideCollected.Illusions then
-			return not self.IsIllusionCollected(itemId);
-		end
-		return true;
-	end
-	if self.IsRecipe(itemId, merchantIndex) then
-		if addon.Filters.db.profile.HideCollected.Recipes then
-			return not self.IsRecipeCollected(itemId, merchantIndex);
-		end
-		return true;
+		local isCollected = self.IsIllusionCollected(itemId)
+		return HideCollectedAllowsItem(isCollected, addon.Filters.db.profile.HideCollected.Illusions)
 	end
 
-	-- Not a collectible item
-	return false;
+	if self.IsRecipe(itemId, merchantIndex) then
+		local isCollected = self.IsRecipeCollected(itemId, merchantIndex)
+		return HideCollectedAllowsItem(isCollected, addon.Filters.db.profile.HideCollected.Recipes)
+	end
+
+	if self.IsHousing(itemId) then
+		local isCollected = self.IsHousingCollected(itemId)
+		return HideCollectedAllowsItem(isCollected, addon.Filters.db.profile.HideCollected.Housing)
+	end
+
+	return false
 end
 
 do -- Custom
 	function filters:ValidateCustom(itemId, merchantIndex)
 		if self.IsPet(itemId) then
 			if addon.Filters.db.profile.Custom.Pets then
-				if addon.Filters.db.profile.HideCollected.Pets then
-					return not self.IsPetCollected(itemId)
-				end
-				return true
+				local isCollected = self.IsPetCollected(itemId)
+				return HideCollectedAllowsItem(isCollected, addon.Filters.db.profile.HideCollected.Pets)
 			end
 			return false
 		end
 
 		if self.IsMount(itemId) then
 			if addon.Filters.db.profile.Custom.Mounts then
-				if addon.Filters.db.profile.HideCollected.Mounts then
-					return not self.IsMountCollected(itemId)
-				end
-				return true
+				local isCollected = self.IsMountCollected(itemId)
+				return HideCollectedAllowsItem(isCollected, addon.Filters.db.profile.HideCollected.Mounts)
 			end
 			return false
 		end
 
 		if self.IsToy(itemId) then
 			if addon.Filters.db.profile.Custom.Toys then
-				if addon.Filters.db.profile.HideCollected.Toys then
-					return not self.IsToyCollected(itemId)
-				end
-				return true
+				local isCollected = self.IsToyCollected(itemId)
+				return HideCollectedAllowsItem(isCollected, addon.Filters.db.profile.HideCollected.Toys)
 			end
 			return false
 		end
@@ -671,42 +701,31 @@ do -- Custom
 				if addon.Filters.db.profile.HideCollected.Transmog and self.IsTransmogCollected(itemId) then
 					return false
 				end
-				local _, _, _, itemEquipLoc, _, classId, subClassId = C_Item.GetItemInfoInstant(itemId)
-				if classId == Enum.ItemClass.Armor and addon.Filters.db.profile.Custom.Armor[subClassId] ~= nil then
-					return addon.Filters.db.profile.Custom.Armor[subClassId]
-				elseif classId == Enum.ItemClass.Weapon and addon.Filters.db.profile.Custom.Weapon[subClassId] ~= nil then
-					return addon.Filters.db.profile.Custom.Weapon[subClassId]
-				end
-				return true
+				return ValidateCustomTransmogSubtype(itemId)
 			end
 			return false
 		end
 
 		if self.IsTransmogSet(itemId) then
 			if addon.Filters.db.profile.Custom.TransmogSets then
-				if addon.Filters.db.profile.HideCollected.TransmogSets then
-					return not self.IsTransmogSetCollected(itemId)
-				end
-				return true
+				local isCollected = self.IsTransmogSetCollected(itemId)
+				return HideCollectedAllowsItem(isCollected, addon.Filters.db.profile.HideCollected.TransmogSets)
 			end
 			return false
 		end
 
 		if self.IsIllusion(itemId) then
 			if addon.Filters.db.profile.Custom.Illusions then
-				if addon.Filters.db.profile.HideCollected.Illusions then
-					return not self.IsIllusionCollected(itemId)
-				end
-				return true
+				local isCollected = self.IsIllusionCollected(itemId)
+				return HideCollectedAllowsItem(isCollected, addon.Filters.db.profile.HideCollected.Illusions)
 			end
 			return false
 		end
+
 		if self.IsRecipe(itemId, merchantIndex) then
 			if addon.Filters.db.profile.Custom.Recipes then
-				if addon.Filters.db.profile.HideCollected.Recipes then
-					return not self.IsRecipeCollected(itemId, merchantIndex)
-				end
-				return true
+				local isCollected = self.IsRecipeCollected(itemId, merchantIndex)
+				return HideCollectedAllowsItem(isCollected, addon.Filters.db.profile.HideCollected.Recipes)
 			end
 			return false
 		end

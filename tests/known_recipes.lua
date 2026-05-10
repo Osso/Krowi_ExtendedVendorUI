@@ -20,6 +20,20 @@ local function isTooltipLineKnown(line)
     return (ITEM_SPELL_KNOWN and leftText == ITEM_SPELL_KNOWN) or leftText == "Already known"
 end
 
+local function tooltipHasKnownLine(tooltipInfo)
+    if not tooltipInfo or not tooltipInfo.lines then
+        return false
+    end
+
+    for _, line in next, tooltipInfo.lines do
+        if isTooltipLineKnown(line) then
+            return true
+        end
+    end
+
+    return false
+end
+
 local recipeTooltipTitlePrefixes = {
     "Plans:",
     "Recipe:",
@@ -32,6 +46,28 @@ local recipeTooltipTitlePrefixes = {
     "Tome:",
 }
 
+local function tooltipLineStartsWithRecipePrefix(leftText)
+    for _, prefix in next, recipeTooltipTitlePrefixes do
+        if leftText:sub(1, #prefix) == prefix then
+            return true
+        end
+    end
+
+    return false
+end
+
+local function tooltipLineLooksLikeRecipe(leftText)
+    if not leftText then
+        return false
+    end
+
+    if tooltipLineStartsWithRecipePrefix(leftText) then
+        return true
+    end
+
+    return leftText:find("Teaches you how to craft", 1, true) ~= nil
+end
+
 local function tooltipLooksLikeRecipe(tooltipInfo)
     if not tooltipInfo or not tooltipInfo.lines then
         return false
@@ -39,16 +75,8 @@ local function tooltipLooksLikeRecipe(tooltipInfo)
 
     for _, line in next, tooltipInfo.lines do
         local leftText = stripColorCodes(line.leftText)
-        if leftText then
-            for _, prefix in next, recipeTooltipTitlePrefixes do
-                if leftText:sub(1, #prefix) == prefix then
-                    return true
-                end
-            end
-
-            if leftText:find("Teaches you how to craft", 1, true) then
-                return true
-            end
+        if tooltipLineLooksLikeRecipe(leftText) then
+            return true
         end
     end
 
@@ -77,16 +105,7 @@ end
 
 local function isRecipeCollected(itemId, merchantIndex)
     local tooltipInfo = getTooltipInfo(itemId, merchantIndex)
-    if not tooltipInfo or not tooltipInfo.lines then
-        return false
-    end
-
-    for _, line in next, tooltipInfo.lines do
-        if isTooltipLineKnown(line) then
-            return true
-        end
-    end
-    return false
+    return tooltipHasKnownLine(tooltipInfo)
 end
 
 local function validateRecipeHideCollected(itemId, merchantIndex)
